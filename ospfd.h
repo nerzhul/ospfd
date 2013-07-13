@@ -1,6 +1,7 @@
-/*	$OpenBSD: ospfd.h,v 1.91 2013/01/17 10:07:56 markus Exp $ */
+/*	$OpenBSD: ospfd.h,v 1.92 2013/05/31 22:38:56 markus Exp $ */
 
 /*
+ * Copyright (c) 2013 Loic Blot <loic.blot@unix-experience.fr>
  * Copyright (c) 2004 Esben Norby <norby@openbsd.org>
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
  *
@@ -387,6 +388,8 @@ struct ospfd_conf {
 	u_int8_t		border;
 	u_int8_t		redistribute;
 	u_int			rdomain;
+	LIST_HEAD(, kroute_filter)	kroute_filter_list;
+	u_int8_t		routing_priority;
 	char			*csock;
 };
 
@@ -526,6 +529,14 @@ struct demote_msg {
 	int			 level;
 };
 
+/* kernel route filtering */
+struct kroute_filter {
+	LIST_ENTRY(kroute_filter)	entry;
+	struct in_addr		 prefix;
+	struct in_addr		 nexthop;
+	u_int8_t		 prefixlen;
+};
+
 /* area.c */
 struct area	*area_new(void);
 int		 area_del(struct area *);
@@ -564,6 +575,9 @@ void		 kr_show_route(struct imsg *);
 void		 kr_ifinfo(char *, pid_t);
 struct kif	*kif_findname(char *, struct in_addr, struct kif_addr **);
 void		 kr_reload(void);
+struct kroute_filter *kr_filter_new(struct in_addr, struct in_addr, u_int8_t);
+void kr_filter_del(struct kroute_filter *);
+struct kroute_filter *kr_filter_find(struct ospfd_conf *, struct in_addr, struct in_addr, u_int8_t);
 
 u_int8_t	mask2prefixlen(in_addr_t);
 in_addr_t	prefixlen2mask(u_int8_t);
@@ -592,6 +606,8 @@ void	merge_config(struct ospfd_conf *, struct ospfd_conf *);
 void	imsg_event_add(struct imsgev *);
 int	imsg_compose_event(struct imsgev *, u_int16_t, u_int32_t,
 	    pid_t, int, void *, u_int16_t);
+int		 kr_filter_do(struct kroute *);
+u_int8_t get_fibrtprio(void);
 
 /* printconf.c */
 void	print_config(struct ospfd_conf *);

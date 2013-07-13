@@ -108,6 +108,32 @@ should modify.
 Table 0 is the default table.
 .Pp
 .It Xo
+.Ic fib-routing-priority Ar 9-62
+.Xc
+Setting the routing priority permit to ajust the kernel route choice
+when multiple protocols are used (for example a BGP plus OSPF router).
+The routing priority is contained between
+.Ic RTP_STATIC 
+(8) and
+.Ic RTP_MAX 
+(63)
+.Ic Warning!
+Be sure the ospf6d priority 
+.Ic isn't same as 
+another used protocol on this machine (except ospfd daemon).
+.Pp
+.It Xo
+.Ic fib-ignore-route Ar prefix
+.Ic nexthop Ar hop
+.Xc
+Block some kernel route insertions based on an discovered 
+.Ar prefix
+and it's 
+.Ar nexthop .
+This function permit to break some routing loops
+caused by mutiple protocol use.
+.Pp
+.It Xo
 .Op Ic no
 .Ic redistribute
 .Sm off

@@ -1,6 +1,7 @@
-/*	$OpenBSD: ospfd.c,v 1.78 2011/08/20 11:16:09 sthen Exp $ */
+/*	$OpenBSD: ospfd.c,v 1.79 2013/05/31 22:35:17 sthen Exp $ */
 
 /*
+ * Copyright (c) 2013 Loic Blot <loic.blot@unix-experience.fr>
  * Copyright (c) 2005 Claudio Jeker <claudio@openbsd.org>
  * Copyright (c) 2004 Esben Norby <norby@openbsd.org>
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -680,6 +681,7 @@ merge_config(struct ospfd_conf *conf, struct ospfd_conf *xconf)
 	struct area		*a, *xa, *na;
 	struct iface		*iface;
 	struct redistribute	*r;
+	struct kroute_filter *rf, *nrf;
 	int			 rchange = 0;
 
 	/* change of rtr_id needs a restart */
@@ -690,6 +692,9 @@ merge_config(struct ospfd_conf *conf, struct ospfd_conf *xconf)
 	    SIMPLEQ_EMPTY(&xconf->redist_list))
 		rchange = 1;
 	conf->rfc1583compat = xconf->rfc1583compat;
+	
+	/* change of fib routing priority needs a restart */
+	conf->routing_priority = xconf->routing_priority;
 
 	if (ospfd_process == PROC_MAIN) {
 		/* main process does neither use areas nor interfaces */
@@ -700,6 +705,14 @@ merge_config(struct ospfd_conf *conf, struct ospfd_conf *xconf)
 		while ((r = SIMPLEQ_FIRST(&xconf->redist_list)) != NULL) {
 			SIMPLEQ_REMOVE_HEAD(&xconf->redist_list, entry);
 			SIMPLEQ_INSERT_TAIL(&conf->redist_list, r, entry);
+		}
+		for (rf = LIST_FIRST(&conf->kroute_filter_list); rf != NULL; rf = nrf) {
+			nrf = LIST_NEXT(rf, entry);
+			kr_filter_del(rf);
+		}
+		for (rf = LIST_FIRST(&xconf->kroute_filter_list); rf != NULL; rf = nrf) {
+			nrf = LIST_NEXT(rf, entry);
+			LIST_INSERT_HEAD(&conf->kroute_filter_list, rf, entry);
 		}
 		goto done;
 	}
@@ -890,4 +903,33 @@ iface_lookup(struct area *area, struct iface *iface)
 		    i->mask.s_addr == iface->mask.s_addr)
 			return (i);
 	return (NULL);
+}
+
+int
+kr_filter_do(struct kroute *kr)
+{
+	struct kroute_filter	*i;
+	
+	LIST_FOREACH(i, &ospfd_conf->kroute_filter_list, entry) {
+		/*
+		 * TODO: filter all routes for one nexthop
+		 */
+		if (i->prefix.s_addr == kr->prefix.s_addr &&
+		    i->prefixlen == kr->prefixlen &&
+		    (i->nexthop.s_addr == kr->nexthop.s_addr ||
+		    i->nexthop.s_addr == INADDR_ANY)) {
+				log_info("ospfd_filternexthop: filtering route %s/%u",
+					inet_ntoa(i->prefix), i->prefixlen);
+				log_info("ospfd_filternexthop: nexthop is %s",
+					inet_ntoa(i->nexthop));
+				return (1);
+		}
+	}
+	return (0);
+}
+
+u_int8_t
+get_fibrtprio(void)
+{
+	return (ospfd_conf->routing_priority);
 }

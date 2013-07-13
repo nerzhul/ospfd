@@ -1,4 +1,4 @@
-/*	$OpenBSD: printconf.c,v 1.15 2010/02/16 08:39:05 dlg Exp $ */
+/*	$OpenBSD: printconf.c,v 1.16 2013/05/31 21:59:48 dlg Exp $ */
 
 /*
  * Copyright (c) 2004, 2005 Esben Norby <norby@openbsd.org>
@@ -32,6 +32,7 @@ void	print_mainconf(struct ospfd_conf *);
 const char *print_no(u_int16_t);
 void	print_redistribute(struct redist_list *);
 void	print_rtlabel(struct ospfd_conf *);
+void	print_kroute_filter(struct ospfd_conf *);
 void	print_iface(struct iface *);
 
 void
@@ -54,9 +55,11 @@ print_mainconf(struct ospfd_conf *conf)
 
 	print_redistribute(&conf->redist_list);
 	print_rtlabel(conf);
+	print_kroute_filter(conf);
 
 	printf("spf-delay msec %u\n", conf->spf_delay);
 	printf("spf-holdtime msec %u\n", conf->spf_hold_time);
+	printf("fib-routing-priority %u\n", conf->routing_priority);
 }
 
 const char *
@@ -106,6 +109,19 @@ print_rtlabel(struct ospfd_conf *conf)
 		if (label->ext_tag)
 			printf("rtlabel \"%s\" external-tag %u\n",
 			    label->name, label->ext_tag);
+}
+
+void
+print_kroute_filter(struct ospfd_conf *conf)
+{
+	struct kroute_filter	*kroute_filter;
+	
+	LIST_FOREACH(kroute_filter, &conf->kroute_filter_list, entry) {
+		printf("kroute-ignore-insert %s prefixlen %u",
+			inet_ntoa(kroute_filter->prefix),kroute_filter->prefixlen);
+		printf(" nexthop %s\n",
+			inet_ntoa(kroute_filter->nexthop));
+	}
 }
 
 void

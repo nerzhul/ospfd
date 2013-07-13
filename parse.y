@@ -1,6 +1,7 @@
-/*	$OpenBSD: parse.y,v 1.73 2010/12/13 13:43:37 bluhm Exp $ */
+/*	$OpenBSD: parse.y,v 1.74 2013/05/31 22:12:08 bluhm Exp $ */
 
 /*
+ * Copyright (c) 2013 Loic Blot <loic.blot@unix-experience.fr>
  * Copyright (c) 2004, 2005 Esben Norby <norby@openbsd.org>
  * Copyright (c) 2004 Ryan McBride <mcbride@openbsd.org>
  * Copyright (c) 2002, 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -116,12 +117,14 @@ typedef struct {
 
 %}
 
-%token	AREA INTERFACE ROUTERID FIBUPDATE REDISTRIBUTE RTLABEL RDOMAIN
-%token	RFC1583COMPAT STUB ROUTER SPFDELAY SPFHOLDTIME EXTTAG
+%token	AREA INTERFACE ROUTERID FIBUPDATE
+%token	REDISTRIBUTE RTLABEL RDOMAIN RFC1583COMPAT STUB ROUTER SPFDELAY
+%token	SPFHOLDTIME EXTTAG
 %token	AUTHKEY AUTHTYPE AUTHMD AUTHMDKEYID
 %token	METRIC PASSIVE
 %token	HELLOINTERVAL FASTHELLOINTERVAL TRANSMITDELAY
 %token	RETRANSMITINTERVAL ROUTERDEADTIME ROUTERPRIORITY
+%token	FIBIGNOREROUTE PREFIXLEN NEXTHOP
 %token	SET TYPE
 %token	YES NO
 %token	MSEC MINIMAL
@@ -435,7 +438,44 @@ authkey		: AUTHKEY STRING {
 		}
 		;
 
-defaults	: METRIC NUMBER {
+defaults	: FIBIGNOREROUTE STRING PREFIXLEN NUMBER NEXTHOP STRING {
+			struct kroute_filter* kroute_filter;
+			struct in_addr prefix;
+			struct in_addr nexthop;
+			u_int8_t prefixlen;
+			
+			if (!inet_aton($2, &prefix)) {
+				yyerror("bad network: %llu/%llu", $2, $4);
+				free($2);
+				YYERROR;
+			}
+			
+			if (!inet_aton($6, &nexthop)) {
+				yyerror("bad nexthop: %llu", $6);
+				free($6);
+				YYERROR;
+			}
+			
+			prefixlen = $4;
+			
+			kroute_filter = kr_filter_new(nexthop,prefix,prefixlen);
+			LIST_INSERT_HEAD(&conf->kroute_filter_list, kroute_filter, entry);
+			
+			free($2);
+		}
+		| FIBROUTEPRIORITY NUMBER {
+			/*
+			* OSPF routing priority neither be less or equal than static routes
+			* nor be greater or equal than RTP_MAX
+			*/
+			if ($2 <= RTP_STATIC || $2 >= RTP_MAX) {
+				yyerror("fib-route-priority out of range (must be > 8 and < 63)");
+				YYERROR;
+			}
+			
+			conf->routing_priority = $2;
+		}
+		| METRIC NUMBER {
 			if ($2 < MIN_METRIC || $2 > MAX_METRIC) {
 				yyerror("metric out of range (%d-%d)",
 				    MIN_METRIC, MAX_METRIC);
@@ -508,7 +548,6 @@ deadtime	: NUMBER {
 		| MINIMAL {
 			$$ = FAST_RTR_DEAD_TIME;
 		}
-
 optnl		: '\n' optnl
 		|
 		;
@@ -722,6 +761,8 @@ lookup(char *s)
 		{"demote",		DEMOTE},
 		{"external-tag",	EXTTAG},
 		{"fast-hello-interval",	FASTHELLOINTERVAL},
+		{"fib-ignore-route", FIBIGNOREROUTE},
+		{"fib-routing-priority",	FIBROUTEPRIORITY},
 		{"fib-update",		FIBUPDATE},
 		{"hello-interval",	HELLOINTERVAL},
 		{"include",		INCLUDE},
@@ -729,8 +770,10 @@ lookup(char *s)
 		{"metric",		METRIC},
 		{"minimal",		MINIMAL},
 		{"msec",		MSEC},
+		{"nexthop",		NEXTHOP},
 		{"no",			NO},
 		{"passive",		PASSIVE},
+		{"prefixlen",	PREFIXLEN},
 		{"rdomain",		RDOMAIN},
 		{"redistribute",	REDISTRIBUTE},
 		{"retransmit-interval",	RETRANSMITINTERVAL},
@@ -1089,6 +1132,7 @@ parse_config(char *filename, int opts)
 	defs->priority = DEFAULT_PRIORITY;
 
 	conf->spf_delay = DEFAULT_SPF_DELAY;
+	conf->routing_priority = RTP_OSPF;
 	conf->spf_hold_time = DEFAULT_SPF_HOLDTIME;
 	conf->spf_state = SPF_IDLE;
 
@@ -1101,6 +1145,7 @@ parse_config(char *filename, int opts)
 	LIST_INIT(&conf->area_list);
 	LIST_INIT(&conf->cand_list);
 	SIMPLEQ_INIT(&conf->redist_list);
+	LIST_INIT(&conf->kroute_filter_list);
 
 	yyparse();
 	errors = file->errors;
