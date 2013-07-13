@@ -124,11 +124,20 @@ another used protocol on this machine (except ospf6d daemon).
 .Pp
 .It Xo
 .Ic rip-routing-priority Ar 9-62 
-(default RIP_RTP: 40)
+(default RTP_RIP: 40)
 .Xc
 Setting the RIP routing priority permit to define on which priority ripd 
 runs. This option is only used when
 .Ic redistribute rip 
+option is specified.
+.Pp
+.It Xo
+.Ic bgp-routing-priority Ar 9-62 
+(default RTP_BGP: 48)
+.Xc
+Setting the BGP routing priority permit to define on which priority bgpd 
+runs. This option is only used when
+.Ic redistribute bgp 
 option is specified.
 .Pp
 .It Xo
@@ -146,7 +155,7 @@ caused by mutiple protocol use.
 .Op Ic no
 .Ic redistribute
 .Sm off
-.Po Ic static Ns | Ns Ic connected Ns | Ns Ic rip Ns | Ns
+.Po Ic static Ns | Ns Ic connected Ns | Ns Ic rip Ns | Ns Ic bgp Ns | Ns
 .Ic default Pc
 .Sm on
 .Op Ic set ...
@@ -168,6 +177,9 @@ static routes will be announced over OSPF.
 If set to
 .Ic rip ,
 rip routes will be announced over OSPF.
+If set to
+.Ic bgp ,
+bgp routes will be announced over OSPF.
 If set to
 .Ic default ,
 a default route pointing to this router will be announced over OSPF.

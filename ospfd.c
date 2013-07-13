@@ -605,6 +605,22 @@ ospf_redistribute(struct kroute *kr, u_int32_t *metric)
 				return (r->type & REDIST_NO ? 0 : 1);
 			}
 			break;
+		case REDIST_BGP:
+			if (is_default)
+				continue;
+			if (kr->flags & F_CONNECTED)
+				continue;
+			/*
+			 * Verify if BGP route is flaged like this
+			 */
+			 
+			 /*if (kr->flags & F_DYNAMIC)
+				continue;*/
+			if (kr->priority == get_bgprtprio()) {
+				*metric = r->metric;
+				return (r->type & REDIST_NO ? 0 : 1);
+			}
+			break;
 		case REDIST_ADDR:
 			if (kr->flags & F_DYNAMIC)
 				continue;
@@ -712,6 +728,7 @@ merge_config(struct ospfd_conf *conf, struct ospfd_conf *xconf)
 	/* change of routing priorities needs a restart */
 	conf->ospf_routing_priority = xconf->ospf_routing_priority;
 	conf->rip_routing_priority = xconf->rip_routing_priority;
+	conf->bgp_routing_priority = xconf->bgp_routing_priority;
 
 	if (ospfd_process == PROC_MAIN) {
 		/* main process does neither use areas nor interfaces */
@@ -955,4 +972,10 @@ u_int8_t
 get_riprtprio(void)
 {
 	return (ospfd_conf->rip_routing_priority);
+}
+
+u_int8_t
+get_bgprtprio(void)
+{
+	return (ospfd_conf->bgp_routing_priority);
 }

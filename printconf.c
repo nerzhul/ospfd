@@ -61,6 +61,7 @@ print_mainconf(struct ospfd_conf *conf)
 	printf("spf-holdtime msec %u\n", conf->spf_hold_time);
 	printf("ospf-routing-priority %u\n", conf->ospf_routing_priority);
 	printf("rip-routing-priority %u\n", conf->rip_routing_priority);
+	printf("bgp-routing-priority %u\n", conf->rip_routing_priority);
 }
 
 const char *
@@ -86,7 +87,10 @@ print_redistribute(struct redist_list *rlh)
 			printf("%sredistribute connected\n", print_no(r->type));
 			break;
 		case REDIST_RIP:
-			printf("%sredistribute rip\n", print_no(r->type));
+			printf("%srutedistribute rip\n", print_no(r->type));
+			break;
+		case REDIST_BGP:
+			printf("%srutedistribute bgp\n", print_no(r->type));
 			break;
 		case REDIST_LABEL:
 			printf("%sredistribute rtlabel %s\n",

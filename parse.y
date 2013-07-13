@@ -301,6 +301,8 @@ redistribute	: no REDISTRIBUTE NUMBER '/' NUMBER optlist {
 				r->type = REDIST_CONNECTED;
 			else if (!strcmp($3, "rip"))
 				r->type = REDIST_RIP;
+			else if (!strcmp($3, "bgp"))
+				r->type = REDIST_BGP;
 			else if (host($3, &r->addr, &r->mask))
 				r->type = REDIST_ADDR;
 			else {
@@ -471,7 +473,7 @@ defaults	: FIBIGNOREROUTE STRING PREFIXLEN NUMBER NEXTHOP STRING {
 			* nor be greater or equal than RTP_MAX
 			*/
 			if ($2 <= RTP_STATIC || $2 >= RTP_MAX) {
-				yyerror("fib-route-priority out of range (must be > 8 and < 63)");
+				yyerror("ospf-route-priority out of range (must be > 8 and < 63)");
 				YYERROR;
 			}
 			
@@ -483,11 +485,23 @@ defaults	: FIBIGNOREROUTE STRING PREFIXLEN NUMBER NEXTHOP STRING {
 			* nor be greater or equal than RTP_MAX
 			*/
 			if ($2 <= RTP_STATIC || $2 >= RTP_MAX) {
-				yyerror("fib-route-priority out of range (must be > 8 and < 63)");
+				yyerror("rip-route-priority out of range (must be > 8 and < 63)");
 				YYERROR;
 			}
 			
 			conf->rip_routing_priority = $2;
+		}
+		| BGPROUTINGPRIORITY NUMBER {
+			/*
+			* BGP routing priority neither be less or equal than static routes
+			* nor be greater or equal than RTP_MAX
+			*/
+			if ($2 <= RTP_STATIC || $2 >= RTP_MAX) {
+				yyerror("bgp-route-priority out of range (must be > 8 and < 63)");
+				YYERROR;
+			}
+			
+			conf->bgp_routing_priority = $2;
 		}
 		| METRIC NUMBER {
 			if ($2 < MIN_METRIC || $2 > MAX_METRIC) {
@@ -772,6 +786,7 @@ lookup(char *s)
 		{"auth-md",		AUTHMD},
 		{"auth-md-keyid",	AUTHMDKEYID},
 		{"auth-type",		AUTHTYPE},
+		{"bgp-routing-priority",	BGPROUTINGPRIORITY},
 		{"demote",		DEMOTE},
 		{"external-tag",	EXTTAG},
 		{"fast-hello-interval",	FASTHELLOINTERVAL},
@@ -1149,6 +1164,7 @@ parse_config(char *filename, int opts)
 	conf->spf_delay = DEFAULT_SPF_DELAY;
 	conf->ospf_routing_priority = RTP_OSPF;
 	conf->rip_routing_priority = RTP_RIP;
+	conf->bgp_routing_priority = RTP_BGP;
 	conf->spf_hold_time = DEFAULT_SPF_HOLDTIME;
 	conf->spf_state = SPF_IDLE;
 
