@@ -255,7 +255,7 @@ kr_change_fib(struct kroute_node *kr, struct kroute *kroute, int krcount,
 		kn->r.prefixlen = kroute[i].prefixlen;
 		kn->r.nexthop.s_addr = kroute[i].nexthop.s_addr;
 		kn->r.flags = kroute[i].flags | F_OSPFD_INSERTED;
-		kn->r.priority = get_fibrtprio();
+		kn->r.priority = get_ospfrtprio();
 		kn->r.ext_tag = kroute[i].ext_tag;
 		rtlabel_unref(kn->r.rtlabel);	/* for RTM_CHANGE */
 		kn->r.rtlabel = kroute[i].rtlabel;
@@ -279,7 +279,7 @@ kr_change(struct kroute *kroute, int krcount)
 
 	kroute->rtlabel = rtlabel_tag2id(kroute->ext_tag);
 
-	kr = kroute_find(kroute->prefix.s_addr, kroute->prefixlen, get_fibrtprio());
+	kr = kroute_find(kroute->prefix.s_addr, kroute->prefixlen, get_ospfrtprio());
 	if (kr != NULL && kr->next == NULL && krcount == 1)
 		/* single path OSPF route */
 		action = RTM_CHANGE;
@@ -290,7 +290,7 @@ kr_change(struct kroute *kroute, int krcount)
 int
 kr_delete_fib(struct kroute_node *kr)
 {
-	if (kr->r.priority != get_fibrtprio())
+	if (kr->r.priority != get_ospfrtprio())
 		log_warn("kr_delete_fib: %s/%d has wrong priority %d",
 		    inet_ntoa(kr->r.prefix), kr->r.prefixlen, kr->r.priority);
 
@@ -309,7 +309,7 @@ kr_delete(struct kroute *kroute)
 	struct kroute_node	*kr, *nkr;
 
 	if ((kr = kroute_find(kroute->prefix.s_addr, kroute->prefixlen,
-	    get_fibrtprio())) == NULL)
+	    get_ospfrtprio())) == NULL)
 		return (0);
 
 	while (kr != NULL) {
@@ -341,7 +341,7 @@ kr_fib_couple(void)
 	kr_state.fib_sync = 1;
 
 	RB_FOREACH(kr, kroute_tree, &krt)
-		if (kr->r.priority == get_fibrtprio())
+		if (kr->r.priority == get_ospfrtprio())
 			for (kn = kr; kn != NULL; kn = kn->next)
 				send_rtmsg(kr_state.fd, RTM_ADD, &kn->r);
 
@@ -358,7 +358,7 @@ kr_fib_decouple(void)
 		return;
 
 	RB_FOREACH(kr, kroute_tree, &krt)
-		if (kr->r.priority == get_fibrtprio())
+		if (kr->r.priority == get_ospfrtprio())
 			for (kn = kr; kn != NULL; kn = kn->next)
 				send_rtmsg(kr_state.fd, RTM_DELETE, &kn->r);
 
@@ -411,7 +411,7 @@ kr_fib_reload()
 			kn = kr->next;
 
 			if (kr->serial != kr_state.fib_serial) {
-				if (kr->r.priority == get_fibrtprio()) {
+				if (kr->r.priority == get_ospfrtprio()) {
 					kr->serial = kr_state.fib_serial;
 					if (send_rtmsg(kr_state.fd,
 					    RTM_ADD, &kr->r) != 0)
@@ -1146,7 +1146,7 @@ send_rtmsg(int fd, int action, struct kroute *kroute)
 	bzero(&hdr, sizeof(hdr));
 	hdr.rtm_version = RTM_VERSION;
 	hdr.rtm_type = action;
-	hdr.rtm_priority = get_fibrtprio();
+	hdr.rtm_priority = get_ospfrtprio();
 	hdr.rtm_tableid = kr_state.rdomain;	/* rtableid */
 	if (action == RTM_CHANGE)
 		hdr.rtm_fmask = RTF_REJECT|RTF_BLACKHOLE;
@@ -1383,7 +1383,7 @@ rtmsg_process(char *buf, int len)
 			if (rtm->rtm_flags & RTF_MPATH)
 				mpath = 1;
 			prio = rtm->rtm_priority;
-			flags = (prio == get_fibrtprio()) ?
+			flags = (prio == get_ospfrtprio()) ?
 			    F_OSPFD_INSERTED : F_KERNEL;
 
 			switch (sa->sa_family) {
@@ -1442,7 +1442,7 @@ rtmsg_process(char *buf, int len)
 			    != NULL) {
 				/* get the correct route */
 				kr = okr;
-				if ((mpath || prio == get_fibrtprio()) &&
+				if ((mpath || prio == get_ospfrtprio()) &&
 				    (kr = kroute_matchgw(okr, nexthop)) ==
 				    NULL) {
 					log_warnx("mpath route not found");
@@ -1490,7 +1490,7 @@ add:
 				kr->r.ifindex = ifindex;
 				kr->r.priority = prio;
 
-				if (rtm->rtm_priority == get_fibrtprio()) {
+				if (rtm->rtm_priority == get_ospfrtprio()) {
 					log_warnx("alien OSPF route %s/%d",
 					    inet_ntoa(prefix), prefixlen);
 					rv = send_rtmsg(kr_state.fd,

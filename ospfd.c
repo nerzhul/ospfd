@@ -589,6 +589,22 @@ ospf_redistribute(struct kroute *kr, u_int32_t *metric)
 				return (r->type & REDIST_NO ? 0 : 1);
 			}
 			break;
+		case REDIST_RIP:
+			if (is_default)
+				continue;
+			if (kr->flags & F_CONNECTED)
+				continue;
+			/*
+			 * Verify if RIP route is flaged like this
+			 */
+			 
+			 /*if (kr->flags & F_DYNAMIC)
+				continue;*/
+			if (kr->priority == get_riprtprio()) {
+				*metric = r->metric;
+				return (r->type & REDIST_NO ? 0 : 1);
+			}
+			break;
 		case REDIST_ADDR:
 			if (kr->flags & F_DYNAMIC)
 				continue;
@@ -693,8 +709,9 @@ merge_config(struct ospfd_conf *conf, struct ospfd_conf *xconf)
 		rchange = 1;
 	conf->rfc1583compat = xconf->rfc1583compat;
 	
-	/* change of fib routing priority needs a restart */
-	conf->routing_priority = xconf->routing_priority;
+	/* change of routing priorities needs a restart */
+	conf->ospf_routing_priority = xconf->ospf_routing_priority;
+	conf->rip_routing_priority = xconf->rip_routing_priority;
 
 	if (ospfd_process == PROC_MAIN) {
 		/* main process does neither use areas nor interfaces */
@@ -929,7 +946,13 @@ kr_filter_do(struct kroute *kr)
 }
 
 u_int8_t
-get_fibrtprio(void)
+get_ospfrtprio(void)
 {
-	return (ospfd_conf->routing_priority);
+	return (ospfd_conf->ospf_routing_priority);
+}
+
+u_int8_t
+get_riprtprio(void)
+{
+	return (ospfd_conf->rip_routing_priority);
 }

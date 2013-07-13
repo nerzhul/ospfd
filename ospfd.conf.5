@@ -108,9 +108,9 @@ should modify.
 Table 0 is the default table.
 .Pp
 .It Xo
-.Ic fib-routing-priority Ar 9-62
+.Ic ospf-routing-priority Ar 9-62
 .Xc
-Setting the routing priority permit to ajust the kernel route choice
+Setting the OSPF routing priority permit to ajust the kernel route choice
 when multiple protocols are used (for example a BGP plus OSPF router).
 The routing priority is contained between
 .Ic RTP_STATIC 
@@ -118,9 +118,18 @@ The routing priority is contained between
 .Ic RTP_MAX 
 (63)
 .Ic Warning!
-Be sure the ospf6d priority 
+Be sure the ospfd priority 
 .Ic isn't same as 
-another used protocol on this machine (except ospfd daemon).
+another used protocol on this machine (except ospf6d daemon).
+.Pp
+.It Xo
+.Ic rip-routing-priority Ar 9-62 
+(default RIP_RTP: 40)
+.Xc
+Setting the RIP routing priority permit to define on which priority ripd 
+runs. This option is only used when
+.Ic redistribute rip 
+option is specified.
 .Pp
 .It Xo
 .Ic fib-ignore-route Ar prefix
@@ -137,7 +146,7 @@ caused by mutiple protocol use.
 .Op Ic no
 .Ic redistribute
 .Sm off
-.Po Ic static Ns | Ns Ic connected Ns | Ns
+.Po Ic static Ns | Ns Ic connected Ns | Ns Ic rip Ns | Ns
 .Ic default Pc
 .Sm on
 .Op Ic set ...
@@ -156,6 +165,9 @@ routes to directly attached networks will be announced over OSPF.
 If set to
 .Ic static ,
 static routes will be announced over OSPF.
+If set to
+.Ic rip ,
+rip routes will be announced over OSPF.
 If set to
 .Ic default ,
 a default route pointing to this router will be announced over OSPF.

@@ -299,6 +299,8 @@ redistribute	: no REDISTRIBUTE NUMBER '/' NUMBER optlist {
 				r->type = REDIST_STATIC;
 			else if (!strcmp($3, "connected"))
 				r->type = REDIST_CONNECTED;
+			else if (!strcmp($3, "rip"))
+				r->type = REDIST_RIP;
 			else if (host($3, &r->addr, &r->mask))
 				r->type = REDIST_ADDR;
 			else {
@@ -463,7 +465,7 @@ defaults	: FIBIGNOREROUTE STRING PREFIXLEN NUMBER NEXTHOP STRING {
 			
 			free($2);
 		}
-		| FIBROUTEPRIORITY NUMBER {
+		| OSPFROUTINGPRIORITY NUMBER {
 			/*
 			* OSPF routing priority neither be less or equal than static routes
 			* nor be greater or equal than RTP_MAX
@@ -473,7 +475,19 @@ defaults	: FIBIGNOREROUTE STRING PREFIXLEN NUMBER NEXTHOP STRING {
 				YYERROR;
 			}
 			
-			conf->routing_priority = $2;
+			conf->ospf_routing_priority = $2;
+		}
+		| RIPROUTINGPRIORITY NUMBER {
+			/*
+			* RIP routing priority neither be less or equal than static routes
+			* nor be greater or equal than RTP_MAX
+			*/
+			if ($2 <= RTP_STATIC || $2 >= RTP_MAX) {
+				yyerror("fib-route-priority out of range (must be > 8 and < 63)");
+				YYERROR;
+			}
+			
+			conf->rip_routing_priority = $2;
 		}
 		| METRIC NUMBER {
 			if ($2 < MIN_METRIC || $2 > MAX_METRIC) {
@@ -762,7 +776,6 @@ lookup(char *s)
 		{"external-tag",	EXTTAG},
 		{"fast-hello-interval",	FASTHELLOINTERVAL},
 		{"fib-ignore-route", FIBIGNOREROUTE},
-		{"fib-routing-priority",	FIBROUTEPRIORITY},
 		{"fib-update",		FIBUPDATE},
 		{"hello-interval",	HELLOINTERVAL},
 		{"include",		INCLUDE},
@@ -772,12 +785,14 @@ lookup(char *s)
 		{"msec",		MSEC},
 		{"nexthop",		NEXTHOP},
 		{"no",			NO},
+		{"ospf-routing-priority",	OSPFROUTINGPRIORITY},
 		{"passive",		PASSIVE},
 		{"prefixlen",	PREFIXLEN},
 		{"rdomain",		RDOMAIN},
 		{"redistribute",	REDISTRIBUTE},
 		{"retransmit-interval",	RETRANSMITINTERVAL},
 		{"rfc1583compat",	RFC1583COMPAT},
+		{"rip-routing-priority",	RIPROUTINGPRIORITY},
 		{"router",		ROUTER},
 		{"router-dead-time",	ROUTERDEADTIME},
 		{"router-id",		ROUTERID},
@@ -1132,7 +1147,8 @@ parse_config(char *filename, int opts)
 	defs->priority = DEFAULT_PRIORITY;
 
 	conf->spf_delay = DEFAULT_SPF_DELAY;
-	conf->routing_priority = RTP_OSPF;
+	conf->ospf_routing_priority = RTP_OSPF;
+	conf->rip_routing_priority = RTP_RIP;
 	conf->spf_hold_time = DEFAULT_SPF_HOLDTIME;
 	conf->spf_state = SPF_IDLE;
 

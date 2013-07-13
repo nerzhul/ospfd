@@ -131,10 +131,12 @@ enum imsg_type {
 
 #define	REDIST_CONNECTED	0x01
 #define	REDIST_STATIC		0x02
-#define	REDIST_LABEL		0x04
-#define	REDIST_ADDR		0x08
-#define	REDIST_NO		0x10
-#define	REDIST_DEFAULT		0x20
+#define REDIST_RIP		0x04
+#define	REDIST_LABEL		0x08
+#define	REDIST_ADDR		0x10
+#define	REDIST_NO		0x20
+#define	REDIST_DEFAULT		0x40
+
 
 struct redistribute {
 	SIMPLEQ_ENTRY(redistribute)	entry;
@@ -389,7 +391,8 @@ struct ospfd_conf {
 	u_int8_t		redistribute;
 	u_int			rdomain;
 	LIST_HEAD(, kroute_filter)	kroute_filter_list;
-	u_int8_t		routing_priority;
+	u_int8_t		ospf_routing_priority;
+	u_int8_t		rip_routing_priority;
 	char			*csock;
 };
 
@@ -607,7 +610,8 @@ void	imsg_event_add(struct imsgev *);
 int	imsg_compose_event(struct imsgev *, u_int16_t, u_int32_t,
 	    pid_t, int, void *, u_int16_t);
 int		 kr_filter_do(struct kroute *);
-u_int8_t get_fibrtprio(void);
+u_int8_t get_ospfrtprio(void);
+u_int8_t get_riprtprio(void);
 
 /* printconf.c */
 void	print_config(struct ospfd_conf *);
